@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Stay75+ - Attendance Calculator</title>
+<style>
+  /* Reset and base */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f9fafb;
+    margin: 0;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    color: #2c3e50;
+    position: relative;
+  }
+  h1 {
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    color: #34495e;
+  }
+
+  /* Semester dropdown container */
+  .semester-dropdown {
+    position: relative;
+    margin-bottom: 1.5rem;
+    width: 140px;
+  }
+  /* Button to open dropdown */
+  .semester-select-btn {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2980b9;
+    background: white;
+    border: 2px solid #2980b9;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+    position: relative;
+    user-select: none;
+  }
+  .semester-select-btn::after {
+    content: '▼';
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    color: #2980b9;
+    pointer-events: none;
+  }
+
+  /* Dropdown menu */
+  .semester-menu {
+    position: absolute;
+    top: 110%;
+    left: 0;
+    width: 100%;
+    background: white;
+    border: 2px solid #2980b9;
+    border-radius: 6px;
+    box-shadow: 0 8px 20px rgba(41, 128, 185, 0.3);
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+  }
+  .semester-menu.open {
+    display: block;
+  }
+  /* Dropdown items */
+  .semester-item {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2980b9;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid #e2e8f0;
+    transition: background-color 0.2s ease;
+  }
+  .semester-item:last-child {
+    border-bottom: none;
+  }
+  .semester-item:hover,
+  .semester-item[aria-selected="true"] {
+    background-color: #dbe9fa;
+  }
+  .semester-item:focus {
+    outline: 2px solid #2980b9;
+    background-color: #c3dbf8;
+  }
+
+  /* Container for boxes */
+  .attendance-boxes {
+    display: grid;
+    grid-template-columns: repeat(10, 3rem);
+    grid-auto-rows: 3rem;
+    grid-gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Individual days */
+  .day-box {
+    border: 2px solid #bdc3c7;
+    border-radius: 6px;
+    background: #ecf0f1;
+    cursor: pointer;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+    font-weight: 600;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+  }
+  .day-box.present {
+    background-color: #27ae60;
+    border-color: #27ae60;
+    color: white;
+  }
+  .day-box.absent {
+    background-color: #c0392b;
+    border-color: #c0392b;
+    color: white;
+  }
+  .day-box:hover:not(.present):not(.absent) {
+    background: #d3d7db;
+    border-color: #9fa6af;
+  }
+
+  /* Info and footer elements */
+  .marked-info {
+    font-size: 1.1rem;
+    margin-bottom: 1.3rem;
+    color: #34495e;
+    font-weight: 600;
+  }
+
+  button.calculate-btn {
+    background: #2980b9;
+    border: none;
+    padding: 0.9rem 2rem;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 6px 12px rgba(41, 128, 185, 0.4);
+    transition: background-color 0.25s ease;
+  }
+  button.calculate-btn:hover:not(:disabled) {
+    background: #1c5980;
+  }
+  button.calculate-btn:disabled {
+    background: #a9b1b9;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* Result page styling */
+  .result-page {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    max-width: 320px;
+    text-align: center;
+    padding: 2rem 1rem;
+    border-radius: 12px;
+    background-color: white;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.07);
+  }
+  
+  .result-page.active {
+    display: flex;
+  }
+
+  .result-page h2 {
+    margin-bottom: 1rem;
+    color: #2c3e50;
+  }
+
+  .attendance-percentage {
+    font-weight: 800;
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    color: #27ae60; /* Solid color */
+  }
+
+  .attendance-breakdown {
+    font-size: 1.2rem;
+    color: #34495e;
+    line-height: 1.4;
+  }
+
+  .back-btn {
+    margin-top: 2rem;
+    padding: 0.7rem 2rem;
+    font-size: 1rem;
+    border: 2px solid #2980b9;
+    background: transparent;
+    color: #2980b9;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+  .back-btn:hover {
+    background: #2980b9;
+    color: white;
+  }
+
+  /* Signature styling */
+  .signature {
+    position: fixed;
+    bottom: 10px;
+    right: 15px;
+    font-size: 0.95rem;
+    color: #2c3e50;
+    font-weight: 600;
+    font-style: italic;
+    user-select: none;
+    pointer-events: none;
+  }
+
+  /* Background minimalistic overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: #f9fafb;
+    z-index: -1;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 420px) {
+    .attendance-boxes {
+      grid-template-columns: repeat(6, 3rem);
+      grid-gap: 0.5rem;
+    }
+    .semester-dropdown {
+      width: 120px;
+    }
+    .semester-select-btn {
+      font-size: 0.9rem;
+    }
+  }
+
+  /* User ID modal overlay */
+  #userIdModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(44, 62, 80, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+  }
+  #userIdModal.hidden {
+    display: none;
+  }
+  #userIdModal .modal-content {
+    background: white;
+    padding: 2rem 3rem;
+    border-radius: 12px;
+    max-width: 360px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    text-align: center;
+  }
+  #userIdModal label {
+    display: block;
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    color: #34495e;
+  }
+  #userIdModal input[type="text"] {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    font-size: 1rem;
+    border: 2px solid #2980b9;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    outline-offset: 2px;
+  }
+  #userIdModal button {
+    background: #2980b9;
+    border: none;
+    padding: 0.8rem 2rem;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 6px 12px rgba(41, 128, 185, 0.4);
+    transition: background-color 0.25s ease;
+  }
+  #userIdModal button:hover:enabled {
+    background: #1c5980;
+  }
+  #userIdModal button:disabled {
+    background: #a9b1b9;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+</style>
+</head>
+<body>
+  <h1>Stay75+</h1>
+
+  <div class="semester-dropdown" id="semesterDropdown" aria-disabled="true">
+    <button class="semester-select-btn" id="semesterSelectBtn" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="semesterSelectBtn semesterSelectedLabel" disabled>
+      Semester: <span id="semesterSelectedLabel">1</span>
+    </button>
+    <ul class="semester-menu" id="semesterMenu" role="listbox" tabindex="-1" aria-label="Select semester">
+      <!-- Semester options generated by JS -->
+    </ul>
+  </div>
+
+  <!-- Attendance marking page -->
+  <div id="attendancePage" aria-disabled="true">
+    <div class="attendance-boxes" id="attendanceBoxes" aria-label="Mark your attendance days">
+      <!-- Boxes generated by JS -->
+    </div>
+
+    <div class="marked-info" id="markedInfo">0 days marked</div>
+
+    <button class="calculate-btn" id="calculateBtn" disabled>Calculate Attendance</button>
+  </div>
+
+  <!-- Result page -->
+  <div id="resultPage" class="result-page" role="region" aria-live="polite" aria-label="Attendance Results">
+    <h2>Your Attendance Percentage</h2>
+    <div class="attendance-percentage" id="attendancePercentage">0%</div>
+    <div class="attendance-breakdown" id="breakdownText"></div>
+    <button class="back-btn" id="backBtn">Back</button>
+  </div>
+
+  <div class="signature">Created By Priyanshu</div>
+
+  <!-- User ID modal -->
+  <div id="userIdModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalDesc">
+    <div class="modal-content">
+      <h2 id="modalTitle">Welcome to Stay75+</h2>
+      <p id="modalDesc">Please enter your username to keep your attendance data separate:</p>
+      <input type="text" id="userIdInput" aria-label="Enter username" placeholder="Your username" autocomplete="off" />
+      <button id="userIdSubmitBtn" disabled>Start</button>
+    </div>
+  </div>
+
+<script>
+(function() {
+  const TOTAL_DAYS = 90;
+  const TOTAL_SEMS = 8;
+
+  let currentUserId = null;
+  const STORAGE_USERID_KEY = 'stay75plus-current-userid';
+  
+  let STORAGE_KEY_PREFIX = null;
+
+  const userIdModal = document.getElementById('userIdModal');
+  const userIdInput = document.getElementById('userIdInput');
+  const userIdSubmitBtn = document.getElementById('userIdSubmitBtn');
+
+  const semesterDropdown = document.getElementById('semesterDropdown');
+  const semesterSelectBtn = document.getElementById('semesterSelectBtn');
+  const semesterMenu = document.getElementById('semesterMenu');
+  const semesterSelectedLabel = document.getElementById('semesterSelectedLabel');
+  const attendanceBoxesDiv = document.getElementById('attendanceBoxes');
+  const markedInfo = document.getElementById('markedInfo');
+  const calculateBtn = document.getElementById('calculateBtn');
+  const attendancePage = document.getElementById('attendancePage');
+  const resultPage = document.getElementById('resultPage');
+  const attendancePercentageDiv = document.getElementById('attendancePercentage');
+  const breakdownText = document.getElementById('breakdownText');
+  const backBtn = document.getElementById('backBtn');
+
+  let currentSemester = 1;
+  let semesterData = {};
+
+  // Enable or disable UI controls based on modal state
+  function setUIEnabled(enabled) {
+    semesterSelectBtn.disabled = !enabled;
+    calculateBtn.disabled = !enabled || (semesterData[currentSemester] ? semesterData[currentSemester].filter(s => s !== 0).length === 0 : true);
+    if (enabled) {
+      semesterDropdown.removeAttribute('aria-disabled');
+      attendancePage.removeAttribute('aria-disabled');
+    } else {
+      semesterDropdown.setAttribute('aria-disabled', 'true');
+      attendancePage.setAttribute('aria-disabled', 'true');
+    }
+  }
+
+  // User ID modal controls
+  userIdInput.addEventListener('input', () => {
+    const val = userIdInput.value.trim();
+    userIdSubmitBtn.disabled = (val.length < 1);
+  });
+
+  userIdSubmitBtn.addEventListener('click', () => {
+    const val = userIdInput.value.trim();
+    if(val.length < 1) return;
+    currentUserId = val;
+    localStorage.setItem(STORAGE_USERID_KEY, currentUserId);
+    STORAGE_KEY_PREFIX = `stay75plus-${currentUserId}-semester-`;
+    userIdModal.classList.add('hidden');
+    setUIEnabled(true);
+    initApp();
+  });
+
+  function createSemesterOptions() {
+    semesterMenu.innerHTML = '';
+    for(let sem=1; sem<=TOTAL_SEMS; sem++) {
+      const li = document.createElement('li');
+      li.classList.add('semester-item');
+      li.setAttribute('role', 'option');
+      li.setAttribute('tabindex', '-1');
+      li.dataset.sem = sem;
+      li.textContent = `Sem ${sem}`;
+      li.setAttribute('aria-selected', sem === currentSemester ? 'true' : 'false');
+
+      li.addEventListener('click', () => {
+        selectSemester(sem);
+        closeDropdown();
+        semesterSelectBtn.focus();
+      });
+
+      li.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectSemester(sem);
+          closeDropdown();
+          semesterSelectBtn.focus();
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          focusNextMenuItem(li);
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          focusPreviousMenuItem(li);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          closeDropdown();
+          semesterSelectBtn.focus();
+        }
+      });
+
+      semesterMenu.appendChild(li);
+    }
+  }
+
+  function focusNextMenuItem(current) {
+    const items = Array.from(semesterMenu.querySelectorAll('.semester-item'));
+    let index = items.indexOf(current);
+    index = (index + 1) % items.length;
+    items[index].focus();
+  }
+
+  function focusPreviousMenuItem(current) {
+    const items = Array.from(semesterMenu.querySelectorAll('.semester-item'));
+    let index = items.indexOf(current);
+    index = (index - 1 + items.length) % items.length;
+    items[index].focus();
+  }
+
+  function openDropdown() {
+    semesterMenu.classList.add('open');
+    semesterSelectBtn.setAttribute('aria-expanded', 'true');
+    const selected = semesterMenu.querySelector('[aria-selected="true"]');
+    if(selected) selected.focus();
+    else semesterMenu.firstElementChild.focus();
+
+    document.addEventListener('click', handleOutsideClick);
+  }
+
+  function closeDropdown() {
+    semesterMenu.classList.remove('open');
+    semesterSelectBtn.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('click', handleOutsideClick);
+  }
+
+  function handleOutsideClick(e) {
+    if(!semesterDropdown.contains(e.target)) {
+      closeDropdown();
+    }
+  }
+
+  semesterSelectBtn.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      openDropdown();
+    } else if (e.key === 'Escape') {
+      closeDropdown();
+    }
+  });
+
+  semesterSelectBtn.addEventListener('click', () => {
+    if(semesterMenu.classList.contains('open')) closeDropdown();
+    else openDropdown();
+  });
+
+  function selectSemester(sem) {
+    if(currentSemester === sem) return;
+    saveCurrentSemesterData();
+    currentSemester = sem;
+    semesterSelectedLabel.textContent = sem;
+    updateMenuSelection();
+    if(!semesterData[sem]) {
+      semesterData[sem] = loadSemesterData(sem);
+    }
+    updateAllBoxes();
+    updateMarkedCount();
+  }
+
+  function updateMenuSelection() {
+    const items = semesterMenu.querySelectorAll('.semester-item');
+    items.forEach(i => {
+      i.setAttribute('aria-selected', i.dataset.sem == currentSemester ? 'true' : 'false');
+    });
+  }
+
+  function loadSemesterData(sem) {
+    try {
+      let data = localStorage.getItem(STORAGE_KEY_PREFIX + sem);
+      if(data) {
+        data = JSON.parse(data);
+        if(Array.isArray(data) && data.length === TOTAL_DAYS) {
+          return data;
+        }
+      }
+    } catch(e) {}
+    return new Array(TOTAL_DAYS).fill(0);
+  }
+
+  function saveCurrentSemesterData() {
+    if(currentUserId && semesterData[currentSemester]) {
+      try {
+        localStorage.setItem(STORAGE_KEY_PREFIX + currentSemester, JSON.stringify(semesterData[currentSemester]));
+      } catch(e) {}
+    }
+  }
+
+  function createBoxes() {
+    attendanceBoxesDiv.innerHTML = '';
+    for(let i=0; i<TOTAL_DAYS; i++) {
+      const box = document.createElement('div');
+      box.classList.add('day-box');
+      box.setAttribute('tabindex', '0');
+      box.setAttribute('role', 'button');
+      box.setAttribute('aria-pressed', 'false');
+      box.setAttribute('aria-label', `Day ${i+1}: unmarked`);
+      box.textContent = i+1;
+
+      box.addEventListener('click', () => {
+        toggleDay(i);
+      });
+      box.addEventListener('keydown', (e) => {
+        if(e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          toggleDay(i);
+        }
+      });
+
+      attendanceBoxesDiv.appendChild(box);
+    }
+  }
+
+  function updateBox(i) {
+    const box = attendanceBoxesDiv.children[i];
+    box.classList.remove('present', 'absent');
+    const state = semesterData[currentSemester][i];
+    if(state === 1) {
+      box.classList.add('present');
+      box.setAttribute('aria-pressed', 'true');
+      box.setAttribute('aria-label', `Day ${i+1}: present`);
+    } else if(state === 2) {
+      box.classList.add('absent');
+      box.setAttribute('aria-pressed', 'true');
+      box.setAttribute('aria-label', `Day ${i+1}: absent`);
+    } else {
+      box.setAttribute('aria-pressed', 'false');
+      box.setAttribute('aria-label', `Day ${i+1}: unmarked`);
+    }
+  }
+
+  function updateAllBoxes() {
+    for(let i=0; i<TOTAL_DAYS; i++) {
+      updateBox(i);
+    }
+  }
+
+  function toggleDay(i) {
+    let states = semesterData[currentSemester];
+    states[i] = (states[i] + 1) % 3;
+    updateBox(i);
+    updateMarkedCount();
+    saveCurrentSemesterData();
+  }
+
+  function updateMarkedCount() {
+    const markedCount = semesterData[currentSemester].filter(s => s !== 0).length;
+    markedInfo.textContent = `${markedCount} day${markedCount !== 1 ? 's' : ''} marked`;
+    calculateBtn.disabled = markedCount === 0;
+  }
+
+  function calculateAttendance() {
+    const presentCount = semesterData[currentSemester].filter(s => s === 1).length;
+    const absentCount = semesterData[currentSemester].filter(s => s === 2).length;
+    const unmarkedCount = semesterData[currentSemester].filter(s => s === 0).length;
+
+    // Treat unmarked as absent for calculation (add their count to absentCount)
+    const totalAbsent = absentCount + unmarkedCount;
+
+    // Update calculation as requested:
+    // 1 day present = 1.11% increase
+    // 1 day absent = 2% decrease
+    const attendancePercentage = (presentCount * 1.11) - (totalAbsent * 2);
+    const finalPercentage = Math.max(attendancePercentage, 0);
+
+    attendancePercentageDiv.textContent = finalPercentage.toFixed(2) + '%';
+
+    breakdownText.innerHTML =
+      `User: <strong>${currentUserId}</strong><br>` +
+      `Semester: <strong>${currentSemester}</strong><br>` +
+      `Total days: <strong>${TOTAL_DAYS}</strong><br>` +
+      `Present days: <strong>${presentCount}</strong><br>` +
+      `Absent days (marked + unmarked): <strong>${totalAbsent}</strong><br>` +
+      `Attendance Increase: <strong>${(presentCount * 1.11).toFixed(2)}%</strong> (from present)<br>` +
+      `Attendance Decrease: <strong>${(totalAbsent * 2).toFixed(2)}%</strong> (from absent + unmarked)`;
+
+    attendancePage.style.display = 'none';
+    resultPage.classList.add('active');
+    resultPage.focus();
+  }
+
+  function backToMarking() {
+    resultPage.classList.remove('active');
+    attendancePage.style.display = 'block';
+    calculateBtn.focus();
+  }
+
+  function initApp() {
+    createSemesterOptions();
+    createBoxes();
+
+    for(let sem=1; sem <= TOTAL_SEMS; sem++) {
+      semesterData[sem] = loadSemesterData(sem);
+    }
+
+    selectSemester(1);
+
+    calculateBtn.addEventListener('click', calculateAttendance);
+    backBtn.addEventListener('click', backToMarking);
+  }
+
+  // Initialization: check if userId exists in localStorage
+  const savedUserId = localStorage.getItem(STORAGE_USERID_KEY);
+  if(savedUserId && savedUserId.trim().length > 0) {
+    currentUserId = savedUserId;
+    STORAGE_KEY_PREFIX = `stay75plus-${currentUserId}-semester-`;
+    userIdModal.classList.add('hidden');
+    setUIEnabled(true);
+    initApp();
+  } else {
+    userIdModal.classList.remove('hidden');
+    setUIEnabled(false);
+    userIdInput.focus();
+  }
+})();
+</script>
+
+</body>
+</html>
+
